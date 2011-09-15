@@ -18,6 +18,10 @@ QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=./qemu-ifup,
 RUBY_CONFIG="-d -P /krgmon"
 COMMAND="$0"
 
+
+
+# --- Check Part ---- 
+
 # Check if root or not
 check_if_root() {
 	if [ ! "$UID" = "0" ]; then
@@ -67,10 +71,23 @@ check_if_nfsroot_created() {
 }
 
 
+
+
+
+
+
+# --- Getter Part ---- 
+
+
+
+get_nb_cpu() {
+	echo $(cat /proc/cpuinfo | grep "^processor" | wc -l)
+}
+
 # Get the absolute command path
 get_file() {
 	if [ ! -z "${1}" ]; then
-		fileName=`echo "${1}" | grep -E -o "([a-zA-Z0-9 *+._-]+)$"`
+		fileName=$(echo "${1}" | grep -E -o "([a-zA-Z0-9 *+._-]+)$")
 		echo ${fileName//\//}
 	fi
 }
@@ -92,7 +109,7 @@ get_absolute_dir() {
 
 # Check if qemu is launched
 is_launched() {
-	nb_pid=`ps -eo pid,command | grep "${QEMU}" | grep -v "grep" | grep -E -o "^([ ]*)([0-9]+)" | wc -l`
+	nb_pid=$(ps -eo pid,command | grep "${QEMU}" | grep -v "grep" | grep -E -o "^([ ]*)([0-9]+)" | wc -l)
 	if [ $nb_pid -eq 0 ]; then
 		echo ""
 		return
@@ -107,15 +124,50 @@ get_pid_launched() {
 		echo ""
 		return
 	fi
-	pid=`ps -eo pid,command | grep "${QEMU}" | grep -v "grep" | grep -E -o "^([ ]*)([0-9]+)"`
+	pid=$(ps -eo pid,command | grep "${QEMU}" | grep -v "grep" | grep -E -o "^([ ]*)([0-9]+)")
 	echo $pid
 }
 
 # Get pid of the process krgmon
 get_pid_krgmon_launched() {
-	pid=`ps -eo pid,command | grep "ruby ${DIR_NFSROOT}/root/krgmon/trunk/RailsApp/script/server ${RUBY_CONFIG}" | grep -v "grep" | grep -E -o "^([ ]*)([0-9]+)"`
+	pid=$(ps -eo pid,command | grep "ruby ${DIR_NFSROOT}/root/krgmon/trunk/RailsApp/script/server ${RUBY_CONFIG}" | grep -v "grep" | grep -E -o "^([ ]*)([0-9]+)")
 	echo $pid
 }
+
+
+
+
+
+
+# --- Service Part ---- 
+
+
+
+service_dhcp_restart() {
+	/etc/init.d/isc-dhcp-server restart
+}
+
+
+service_nfs_restart() {
+	/etc/init.d/nfs-kernel-server restart
+}
+
+
+service_tftp_restart() {
+	/etc/init.d/tftpd-hpa restart
+}
+
+
+service_snmp_restart() {
+	/etc/init.d/snmpd restart
+}
+
+
+
+
+
+# --- Exec Part ---- 
+
 
 # Init the file, dir
 exec_install_deps() {	
@@ -196,11 +248,11 @@ exec_set_nfsroot() {
 	
 	$ECHO
 	$ECHO "Restart the daemon (DHCP, NFS, TFTP)..."
-	/etc/init.d/isc-dhcp-server restart
+	$(service_dhcp_restart)
 	$ECHO
-	/etc/init.d/nfs-kernel-server restart
+	$(service_nfs_restart)
 	$ECHO
-	restart tftpd-hpa
+	$(service_tftp_restart)
 }
 
 #Init the nfsroot
@@ -299,6 +351,9 @@ ${DIR_NFSROOT}/var *(rw,async,no_root_squash,no_subtree_check)
 	$ECHO "A file init.sh is created in ${DIR_NFSROOT}/root/."
 	
 	echo "#!/bin/bash
+		
+let \"nb_job=$(get_nb_cpu) + 1\"
+
 echo \"Set the language :\"
 export LANGUAGE=\"fr_FR.UTF-8\"
 export LC_ALL=\"fr_FR.UTF-8\"
@@ -764,26 +819,26 @@ sleep 1
 
 echo
 echo \"Make menuconfig of the kerrighed kernel :\"
-cd /root/kerrighed/_kernel/ ; make menuconfig
+cd /root/kerrighed/_kernel/ ; make menuconfig -j \$nb_job
 
 sleep 1
 
 echo
 echo \"Clean of the kerrighed kernel :\"
-cd /root/kerrighed/_kernel/ ; make mrproper
+cd /root/kerrighed/_kernel/ ; make mrproper -j \$nb_job
 rm -f /boot/*.old
 
 sleep 1
 
 echo
 echo \"Compile kerrighed kernel :\"
-cd /root/kerrighed/ ; make
+cd /root/kerrighed/ ; make -j \$nb_job
 
 sleep 1
 
 echo
 echo \"Install kerrighed kernel :\"
-cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=/boot/ INSTALL_MOD_PATH=/root/
+cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=/boot/ INSTALL_MOD_PATH=/root/ -j \$nb_job
 
 sleep 1
 
@@ -805,6 +860,12 @@ mkdir -p /config
 sleep 1
 
 update-rc.d kerrighed-host defaults 60
+
+sleep 1
+
+echo
+echo \"Umount the device...\"
+umount /proc
 
 echo" > "${DIR_NFSROOT}/root/init.sh"
 
@@ -832,7 +893,7 @@ exec_finish_init_nfsroot() {
 	touch "${DIR_TFTPROOT}/pxelinux.cfg/default"
 	
 	first=1
-	listKernel=`ls "${DIR_NFSROOT}/lib/modules/"`
+	listKernel=$(ls "${DIR_NFSROOT}/lib/modules/")
 	for i in $listKernel; do
 		cp "${DIR_NFSROOT}/boot/initrd.img-$i" "${DIR_TFTPROOT}"
 		cp "${DIR_NFSROOT}/boot/vmlinuz-$i" "${DIR_TFTPROOT}"
@@ -953,13 +1014,13 @@ traphandle KERRIGHED-MONITORING-MIB::krgMigrationNotif /usr/sbin/kerrighed-migmo
 	
 	$ECHO
 	$ECHO "Restart the SNMP Server ..."
-	/etc/init.d/snmpd restart
+	$(service_snmp_restart)
 	
 	sleep 1
 	
 	
-	mUser=`cat /etc/mysql/debian.cnf | grep "user" | head -n 1 | cut -d'=' -f2 | grep -E -o "([a-zA-Z0-9_.-]+)"`
-	mPwd=`cat /etc/mysql/debian.cnf | grep "password" | head -n 1 | cut -d'=' -f2 | grep -E -o "([a-zA-Z0-9_.-]+)"`
+	mUser=$(cat /etc/mysql/debian.cnf | grep "user" | head -n 1 | cut -d'=' -f2 | grep -E -o "([a-zA-Z0-9_.-]+)")
+	mPwd=$(cat /etc/mysql/debian.cnf | grep "password" | head -n 1 | cut -d'=' -f2 | grep -E -o "([a-zA-Z0-9_.-]+)")
 	
 	
 	
@@ -971,12 +1032,12 @@ traphandle KERRIGHED-MONITORING-MIB::krgMigrationNotif /usr/sbin/kerrighed-migmo
 	
 	$ECHO
 	$ECHO "Create user '${MYSQL_USER}' ..."
-	testExist=`mysql -u"${mUser}" -p"${mPwd}" -s -e "USE mysql;SELECT User FROM user WHERE User='krgmon';" | tail -n 1`
+	testExist=$(mysql -u"${mUser}" -p"${mPwd}" -s -e "USE mysql;SELECT User FROM user WHERE User='krgmon';" | tail -n 1)
 	
 	if [ ! -z "${testExist}" ]; then
 		$ECHO "   Delete old user ..."
-		userDel=`mysql -u"${mUser}" -p"${mPwd}" -s -e "USE mysql;SELECT User FROM user WHERE User='krgmon';" | tail -n 1`
-		hostDel=`mysql -u"${mUser}" -p"${mPwd}" -s -e "USE mysql;SELECT Host FROM user WHERE User='krgmon';" | tail -n 1`
+		userDel=$(mysql -u"${mUser}" -p"${mPwd}" -s -e "USE mysql;SELECT User FROM user WHERE User='krgmon';" | tail -n 1)
+		hostDel=$(mysql -u"${mUser}" -p"${mPwd}" -s -e "USE mysql;SELECT Host FROM user WHERE User='krgmon';" | tail -n 1)
 		mysql -u"${mUser}" -p"${mPwd}" -e "DROP USER '${userDel}'@'${hostDel}';" | tail -n 1
 	fi
 	
@@ -1120,7 +1181,7 @@ exec_start() {
 			
 		$ECHO
 		$ECHO "Configure network interface..."
-		testHosts=`ifconfig -a | grep "${QEMU_DEVICE_NAME}"`
+		testHosts=$(ifconfig -a | grep "${QEMU_DEVICE_NAME}")
 		if [ -z "${testHosts}" ]; then
 		
 			echo "    Configure ${QEMU_DEVICE_NAME} interface..."
@@ -1144,7 +1205,7 @@ ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.2
 
 		$ECHO
 		$ECHO "Restart the daemon..."
-		/etc/init.d/isc-dhcp-server restart
+		$(service_dhcp_restart)
 		
 		$QEMU  ${QEMU_CONFIG}
 		pid=$(get_pid_launched)	
@@ -1172,7 +1233,7 @@ exec_stop() {
 		$ECHO "The virtual machine is stopping (pid:${pid}) !"
 	fi
 	
-	testHosts=`ifconfig -a | grep "${QEMU_DEVICE_NAME}"`
+	testHosts=$(ifconfig -a | grep "${QEMU_DEVICE_NAME}")
 	if [ ! -z "${testHosts}" ]; then
 		sleep 1
 						
