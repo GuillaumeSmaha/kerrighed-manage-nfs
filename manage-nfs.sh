@@ -15,11 +15,11 @@ DEVICE_ETH0_DEFAULT="eth0"
 ECHO=echo
 QEMU=qemu-system-x86_64
 QEMU_DISPLAY_VNC=:1
-QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(get_absolute_path ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
+QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(readlink -f ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
 RUBY_CONFIG="-d -P /krgmon"
 COMMAND="$0"
 
-
+COMMAND_PARAM_OPTION="$2"
 
 # --- Check Part ---- 
 
@@ -1215,7 +1215,7 @@ exec_start() {
 			echo "#!/bin/sh" > $(get_absolute_path ${SCRIPT_QEMU_UP})
 			
 		
-			if [ $# -gt 1 ] && [ "$2" == "--no-virtual-device" ]; then
+			if [ "${COMMAND_PARAM_OPTION}" == "--no-virtual-device" ]; then
 				echo "    Configure ${DEVICE_ETH0} interface (no virtual device)..."
 				ifconfig ${DEVICE_ETH0} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
 				
