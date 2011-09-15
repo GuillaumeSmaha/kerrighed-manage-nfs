@@ -731,7 +731,8 @@ if [ -d \"/root/kerrighed/.git\" ]; then
 	cd /root/kerrighed ; git pull
 else
 	echo \"Clone the repertory\"
-	git clone git://git-externe.kerlabs.com/kerrighed-tools.git /root/kerrighed
+	#git clone git://git-externe.kerlabs.com/kerrighed-tools.git /root/kerrighed
+	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/tools /root/kerrighed
 fi
 
 sleep 1
@@ -743,7 +744,8 @@ if [ -d \"/root/kerrighed/_kernel/.git\" ]; then
 	cd /root/kerrighed/_kernel ; git pull
 else
 	echo \"Clone the repertory\"
-	git clone git://git-externe.kerlabs.com/kerrighed-kernel.git /root/kerrighed/_kernel
+	#git clone git://git-externe.kerlabs.com/kerrighed-kernel.git /root/kerrighed/_kernel
+	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/kernel /root/kerrighed/_kernel
 fi
 
 sleep 1
