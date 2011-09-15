@@ -248,11 +248,11 @@ exec_set_nfsroot() {
 	
 	$ECHO
 	$ECHO "Restart the daemon (DHCP, NFS, TFTP)..."
-	$(service_dhcp_restart)
+	service_dhcp_restart
 	$ECHO
-	$(service_nfs_restart)
+	service_nfs_restart
 	$ECHO
-	$(service_tftp_restart)
+	service_tftp_restart
 }
 
 #Init the nfsroot
@@ -1014,7 +1014,7 @@ traphandle KERRIGHED-MONITORING-MIB::krgMigrationNotif /usr/sbin/kerrighed-migmo
 	
 	$ECHO
 	$ECHO "Restart the SNMP Server ..."
-	$(service_snmp_restart)
+	service_snmp_restart
 	
 	sleep 1
 	
@@ -1205,7 +1205,7 @@ ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.2
 
 		$ECHO
 		$ECHO "Restart the daemon..."
-		$(service_dhcp_restart)
+		service_dhcp_restart
 		
 		$QEMU  ${QEMU_CONFIG}
 		pid=$(get_pid_launched)	
