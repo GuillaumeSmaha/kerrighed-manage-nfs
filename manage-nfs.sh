@@ -742,7 +742,7 @@ COMPRESS=gzip
 # nfs - Boot using an NFS drive as the root of the drive.
 #
 
-BOOT=local
+BOOT=nfs
 
 #
 # DEVICE: ...
