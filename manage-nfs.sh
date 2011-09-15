@@ -306,7 +306,9 @@ subnet ${IP_BASE}.0 netmask 255.255.255.0
 
 " > /etc/dhcp/dhcpd.conf
 
-	cp /etc/dhcp/dhcpd.conf /etc/dhcp3/
+	if [ -d "/etc/dhcp3/" ]; then
+		cp /etc/dhcp/dhcpd.conf /etc/dhcp3/
+	fi
 	
 	sleep 1
 
