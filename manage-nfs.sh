@@ -1216,6 +1216,7 @@ exec_start() {
 			
 		
 			if [ $# -gt 1 ] && [ "$2" == "--no-virtual-device" ]; then
+				echo "    Configure ${DEVICE_ETH0} interface (no virtual device)..."
 				ifconfig ${DEVICE_ETH0} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
 				
 			else
