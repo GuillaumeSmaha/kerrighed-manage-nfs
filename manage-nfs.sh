@@ -4,6 +4,7 @@
 # Constant Default
 FILE_CONFIG="./.script-kerrighed-config"
 QEMU_DEVICE_NAME="tap0"
+SCRIPT_QEMU_UP=".qemu-ifup"
 
 DIR_NFSROOT_DEFAULT="kerrighed"
 DIR_TFTPROOT_DEFAULT="tftpboot"
@@ -14,7 +15,7 @@ DEVICE_ETH0_DEFAULT="eth0"
 ECHO=echo
 QEMU=qemu-system-x86_64
 QEMU_DISPLAY_VNC=:1
-QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=./qemu-ifup,downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
+QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(get_absolute_path ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
 RUBY_CONFIG="-d -P /krgmon"
 COMMAND="$0"
 
@@ -146,20 +147,41 @@ get_pid_krgmon_launched() {
 service_dhcp_restart() {
 	/etc/init.d/isc-dhcp-server restart
 }
-
+service_dhcp_start() {
+	/etc/init.d/isc-dhcp-server start
+}
+service_dhcp_stop() {
+	/etc/init.d/isc-dhcp-server stop
+}
 
 service_nfs_restart() {
 	/etc/init.d/nfs-kernel-server restart
 }
-
+service_nfs_start() {
+	/etc/init.d/nfs-kernel-server start
+}
+service_nfs_stop() {
+	/etc/init.d/nfs-kernel-server stop
+}
 
 service_tftp_restart() {
 	/etc/init.d/tftpd-hpa restart
 }
-
+service_tftp_start() {
+	/etc/init.d/tftpd-hpa start
+}
+service_tftp_stop() {
+	/etc/init.d/tftpd-hpa stop
+}
 
 service_snmp_restart() {
 	/etc/init.d/snmpd restart
+}
+service_snmp_start() {
+	/etc/init.d/snmpd start
+}
+service_snmp_stop() {
+	/etc/init.d/snmpd start
 }
 
 
@@ -1186,22 +1208,30 @@ exec_start() {
 		testHosts=$(ifconfig -a | grep "${QEMU_DEVICE_NAME}")
 		if [ -z "${testHosts}" ]; then
 		
-			echo "    Configure ${QEMU_DEVICE_NAME} interface..."
-			tunctl -u root -t ${QEMU_DEVICE_NAME}
-			
-			echo "    Activating link for ${QEMU_DEVICE_NAME} ..."
-			ip link set ${QEMU_DEVICE_NAME} up
-							
-			echo "    IP address ${IP_SERVER} on ${QEMU_DEVICE_NAME}..."
-			ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
-			
-			
 			
 			echo "    Script qemu-ifup..."
-			touch ./qemu-ifup
-			chmod a+x ./qemu-ifup
-			echo "#!/bin/sh
-ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up" > ./qemu-ifup
+			touch $(get_absolute_path ${SCRIPT_QEMU_UP})
+			chmod a+x $(get_absolute_path ${SCRIPT_QEMU_UP})
+			echo "#!/bin/sh" > $(get_absolute_path ${SCRIPT_QEMU_UP})
+			
+		
+			if [ $# -gt 1 ] && [ "$2" == "--no-virtual-device" ]; then
+				ifconfig ${DEVICE_ETH0} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
+				
+			else
+				ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
+				echo "    Configure ${QEMU_DEVICE_NAME} interface..."
+				tunctl -u root -t ${QEMU_DEVICE_NAME}
+				
+				echo "    Activating link for ${QEMU_DEVICE_NAME} ..."
+				ip link set ${QEMU_DEVICE_NAME} up
+								
+				echo "    IP address ${IP_SERVER} on ${QEMU_DEVICE_NAME}..."
+				ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
+				
+				
+				echo "ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up" >> $(get_absolute_path ${SCRIPT_QEMU_UP})
+			fi
 				
 		fi
 
@@ -1235,12 +1265,15 @@ exec_stop() {
 		$ECHO "The virtual machine is stopping (pid:${pid}) !"
 	fi
 	
+				
+	echo "    Delete script qemu-ifup..."		
+	rm -f $(get_absolute_path ${SCRIPT_QEMU_UP})
+		
 	testHosts=$(ifconfig -a | grep "${QEMU_DEVICE_NAME}")
 	if [ ! -z "${testHosts}" ]; then
 		sleep 1
-						
-		rm -f ./qemu-ifup
 		
+		echo "    Delete virtual device ${QEMU_DEVICE_NAME}..."	
 		tunctl -d ${QEMU_DEVICE_NAME}
 	fi
 }
@@ -1420,6 +1453,7 @@ config)
     $ECHO ""
     $ECHO " - Virtual Machine :"
     $ECHO "    start : Start the virtual machine connected with the NFSROOT"
+    $ECHO "        --no-virtual-device : Use the device in the config file (${DEVICE_ETH0}) instead of a virtual device (${QEMU_DEVICE_NAME})."
     $ECHO "    restart : Restart the virtual machine"
     $ECHO "    stop : Stop the virtual machine"
     $ECHO "    view : Start the vncviewer for the virtual machine"
