@@ -15,7 +15,8 @@ DEVICE_ETH0_DEFAULT="eth0"
 ECHO=echo
 QEMU=qemu-system-x86_64
 QEMU_DISPLAY_VNC=:1
-QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(readlink -f ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
+QEMU_CONFIG_VIRTUAL_DEVICE="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(readlink -f ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
+QEMU_CONFIG_PHYSIC_DEVICE="-boot n -m 1024 -net nic,vlan=0 -net user -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
 RUBY_CONFIG="-d -P /krgmon"
 COMMAND="$0"
 
@@ -185,6 +186,23 @@ service_snmp_stop() {
 }
 
 
+#Restart all service
+service_all_restart() {
+	check_if_configured
+	check_if_x86_64
+	check_if_nfsroot_created
+
+	
+	$ECHO
+	$ECHO "Restart the daemon (DHCP, NFS, TFTP)..."
+	service_dhcp_restart
+	$ECHO
+	service_nfs_restart
+	$ECHO
+	service_tftp_restart
+}
+
+
 
 
 
@@ -193,43 +211,10 @@ service_snmp_stop() {
 
 # Init the file, dir
 exec_install_deps() {	
-	aptitude -y install ccache debootstrap gcc g++ make ccache gcc g++ ccache docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-server nfs-kernel-server tftpd-hpa syslinux uml-utilities qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe
+	aptitude -y install debootstrap gcc g++ make docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-server nfs-kernel-server tftpd-hpa syslinux uml-utilities qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe
 	$ECHO "The package is installed !"
 }
 
-# Set the parameter for ccache
-exec_configure_ccache() {	
-	if [ -e "/usr/local/bin/gcc" ]; then
-		$ECHO "Ccache is already configured !"
-	else
-		ln -s /usr/bin/ccache /usr/local/bin/c++
-		ln -s /usr/bin/ccache /usr/local/bin/c89-gcc
-		ln -s /usr/bin/ccache /usr/local/bin/c99-gcc
-		ln -s /usr/bin/ccache /usr/local/bin/cc
-		ln -s /usr/bin/ccache /usr/local/bin/cpp
-		ln -s /usr/bin/ccache /usr/local/bin/g++
-		ln -s /usr/bin/ccache /usr/local/bin/gcc 
-		
-		$ECHO "Ccache is configured !"
-	fi
-}
-
-# Remove the parameter for ccache
-exec_unconfigure_ccache() {	
-	if [ -e "/usr/local/bin/gcc" ]; then
-		rm -fr /usr/local/bin/c++
-		rm -fr /usr/local/bin/c89-gcc
-		rm -fr /usr/local/bin/c99-gcc
-		rm -fr /usr/local/bin/cc
-		rm -fr /usr/local/bin/cpp
-		rm -fr /usr/local/bin/g++
-		rm -fr /usr/local/bin/gcc 
-		
-		$ECHO "Ccache is unconfigured !"
-	else
-		$ECHO "Ccache is NOT configured !"
-	fi
-}
 
 #Create the nfsroot
 exec_create_nfsroot() {
@@ -253,28 +238,6 @@ exec_create_nfsroot() {
 	debootstrap --arch amd64 lenny "${DIR_NFSROOT}" http://debian.med.univ-tours.fr/debian/
 	$ECHO "Getting finish !"
 	$ECHO
-}
-
-#Set the nfsroot
-exec_set_nfsroot() {
-	check_if_configured
-	check_if_x86_64
-	check_if_nfsroot_created
-
-	
-	#~ $ECHO
-	#~ $ECHO "Configure the device..."
-	#~ ifconfig ${DEVICE_ETH0} ${IP_SERVER}
-	
-	sleep 1
-	
-	$ECHO
-	$ECHO "Restart the daemon (DHCP, NFS, TFTP)..."
-	service_dhcp_restart
-	$ECHO
-	service_nfs_restart
-	$ECHO
-	service_tftp_restart
 }
 
 #Init the nfsroot
@@ -364,7 +327,7 @@ ${DIR_NFSROOT}/var *(rw,async,no_root_squash,no_subtree_check)
 	
 	
 	
-	exec_set_nfsroot
+	service_all_restart
 	
 	
 	
@@ -375,6 +338,23 @@ ${DIR_NFSROOT}/var *(rw,async,no_root_squash,no_subtree_check)
 	$ECHO "A file init.sh is created in ${DIR_NFSROOT}/root/."
 	
 	echo "#!/bin/bash
+	
+# Set the parameter for ccache
+exec_configure_ccache() {	
+	if [ -e \"/usr/local/bin/gcc\" ]; then
+		echo \"Ccache is already configured !\"
+	else
+		ln -s /usr/bin/ccache /usr/local/bin/c++
+		ln -s /usr/bin/ccache /usr/local/bin/c89-gcc
+		ln -s /usr/bin/ccache /usr/local/bin/c99-gcc
+		ln -s /usr/bin/ccache /usr/local/bin/cc
+		ln -s /usr/bin/ccache /usr/local/bin/cpp
+		ln -s /usr/bin/ccache /usr/local/bin/g++
+		ln -s /usr/bin/ccache /usr/local/bin/gcc 
+		
+		echo \"Ccache is configured !\"
+	fi
+}	
 		
 let \"nb_job=$(get_nb_cpu) + 1\"
 
@@ -397,7 +377,7 @@ sleep 1
 
 echo
 echo \"Install package...\"
-aptitude -y install make ccache gcc g++ ccache docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-common nfs-common nfsbooted stress psmisc
+aptitude -y install make ccache gcc g++ docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-common nfs-common nfsbooted stress psmisc
 
 sleep 1
 
@@ -786,20 +766,7 @@ NFSROOT=${IP_SERVER}:/
 sleep 1
 
 echo
-echo \"Configure ccache :\"
-if [ -e \"/usr/local/bin/gcc\" ]; then
-	echo \"Ccache is already configured !\"
-else
-	ln -s /usr/bin/ccache /usr/local/bin/c++
-	ln -s /usr/bin/ccache /usr/local/bin/c89-gcc
-	ln -s /usr/bin/ccache /usr/local/bin/c99-gcc
-	ln -s /usr/bin/ccache /usr/local/bin/cc
-	ln -s /usr/bin/ccache /usr/local/bin/cpp
-	ln -s /usr/bin/ccache /usr/local/bin/g++
-	ln -s /usr/bin/ccache /usr/local/bin/gcc 
-	
-	echo \"Ccache is configured !\"
-fi
+exec_configure_ccache
 
 sleep 1
 
@@ -936,7 +903,7 @@ exec_finish_init_nfsroot() {
 	done
 	$ECHO "Finish"
 	
-	exec_set_nfsroot
+	service_all_restart
 	
 	exec_config_set
 		
@@ -1135,7 +1102,6 @@ exec_init_kerrighed() {
 	check_if_x86_64
 	
 	exec_install_deps
-	exec_configure_ccache 
 	exec_create_nfsroot
 	exec_init_nfsroot
 }
@@ -1240,7 +1206,11 @@ exec_start() {
 		$ECHO "Restart the daemon..."
 		service_dhcp_restart
 		
-		$QEMU  ${QEMU_CONFIG}
+		if [ "${COMMAND_PARAM_OPTION}" == "--no-virtual-device" ]; then
+			$QEMU  ${QEMU_CONFIG_PHYSIC_DEVICE}
+		else
+			$QEMU  ${QEMU_CONFIG_VIRTUAL_DEVICE}
+		fi
 		pid=$(get_pid_launched)	
 		
 		$ECHO "The virtual machine is started (pid:${pid}) !"
@@ -1337,17 +1307,11 @@ case $1 in
 install_deps)
 	exec_install_deps
 	;;
-configure_ccache)
-	exec_configure_ccache
-	;;
-unconfigure_ccache)
-	exec_unconfigure_ccache
+service_all_restart)
+	service_all_restart
 	;;
 create_nfsroot)
 	exec_create_nfsroot
-	;;
-set_nfsroot)
-	exec_set_nfsroot
 	;;
 init_nfsroot)
 	exec_init_nfsroot
@@ -1448,9 +1412,10 @@ config)
     $ECHO "In additionnal, the script manage the installation and execution of krgmon."
     $ECHO " - Global :"
     $ECHO "    status : Display the status"
+    $ECHO "    service_all_restart : Restart all service"
     $ECHO ""
     $ECHO " - Kerrighed :"
-    $ECHO "    init_kerrighed : Install the dependances, Configure ccache and create the NFSROOT (not krgmon)"
+    $ECHO "    init_kerrighed : Install the dependances and create the NFSROOT (not krgmon)"
     $ECHO ""
     $ECHO " - Virtual Machine :"
     $ECHO "    start : Start the virtual machine connected with the NFSROOT"
@@ -1472,11 +1437,8 @@ config)
     $ECHO ""
     $ECHO " - Kerrighed Advanced (these steps are executed with 'init_kerrighed') :"
     $ECHO "    install_deps : Install the dependances"
-    $ECHO "    configure_ccache : Configure the symbolic link for ccache"
-    $ECHO "    unconfigure_ccache : Remove the symbolic link for ccache"
     $ECHO "    create_nfsroot : Create the nfsroot (Warning : This command erase the data !)"
     $ECHO "    init_nfsroot : Initialize and configure the nfsroot (install package, update repository, compile kernel)"
-    $ECHO "    set_nfsroot : Set the nfsroot server"
 esac
 
 $ECHO
