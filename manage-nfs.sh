@@ -4,6 +4,7 @@
 # Constant Default
 FILE_CONFIG="./.script-kerrighed-config"
 QEMU_DEVICE_NAME="tap0"
+QEMU_BRIDGE_NAME="br0"
 SCRIPT_QEMU_UP=".qemu-ifup"
 
 DIR_NFSROOT_DEFAULT="kerrighed"
@@ -15,8 +16,7 @@ DEVICE_ETH0_DEFAULT="eth0"
 ECHO=echo
 QEMU=qemu-system-x86_64
 QEMU_DISPLAY_VNC=:1
-QEMU_CONFIG_VIRTUAL_DEVICE="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(readlink -f ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
-QEMU_CONFIG_PHYSIC_DEVICE="-boot n -m 1024 -net nic,vlan=0 -net user -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
+QEMU_CONFIG="-boot n -m 1024 -net nic,vlan=0 -net tap,vlan=0,script=$(readlink -f ${SCRIPT_QEMU_UP}),downscript=no,ifname=${QEMU_DEVICE_NAME} -smp 2 -localtime -daemonize -k fr -vnc ${QEMU_DISPLAY_VNC}"
 RUBY_CONFIG="-d -P /krgmon"
 COMMAND="$0"
 
@@ -1182,11 +1182,28 @@ exec_start() {
 			
 		
 			if [ "${COMMAND_PARAM_OPTION}" == "--no-virtual-device" ]; then
-				echo "    Configure ${DEVICE_ETH0} interface (no virtual device)..."
-				ifconfig ${DEVICE_ETH0} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
+				
+				echo "    Configure ${QEMU_DEVICE_NAME} interface..."
+				tunctl -u root -t ${QEMU_DEVICE_NAME}
+				
+				echo "    Activating link for ${QEMU_DEVICE_NAME} ..."
+				ip link set ${QEMU_DEVICE_NAME} up
+				
+				echo "    Set Promisc and IP 0.0.0.0 on ${QEMU_DEVICE_NAME} and ${DEVICE_ETH0}..."
+				ifconfig ${QEMU_DEVICE_NAME} 0.0.0.0 promisc up
+				ifconfig ${DEVICE_ETH0} 0.0.0.0 promisc up
+				 
+				echo "    Adding the bridge device ${QEMU_BRIDGE_NAME}..."
+				brctl addbr ${QEMU_BRIDGE_NAME}				
+				
+				echo "    Configure the bridge device ${QEMU_BRIDGE_NAME}..."
+				brctl addif ${QEMU_BRIDGE_NAME} ${QEMU_DEVICE_NAME}
+				brctl addif ${QEMU_BRIDGE_NAME} ${DEVICE_ETH0}
+				
+				echo "    IP address ${IP_SERVER} on ${QEMU_BRIDGE_NAME}..."
+				ifconfig ${QEMU_BRIDGE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up								
 				
 			else
-				ifconfig ${QEMU_DEVICE_NAME} ${IP_SERVER} broadcast ${IP_BASE}.255 netmask 255.255.255.0 up
 				echo "    Configure ${QEMU_DEVICE_NAME} interface..."
 				tunctl -u root -t ${QEMU_DEVICE_NAME}
 				
@@ -1207,9 +1224,9 @@ exec_start() {
 		service_dhcp_restart
 		
 		if [ "${COMMAND_PARAM_OPTION}" == "--no-virtual-device" ]; then
-			$QEMU  ${QEMU_CONFIG_PHYSIC_DEVICE}
+			$QEMU  ${QEMU_CONFIG}
 		else
-			$QEMU  ${QEMU_CONFIG_VIRTUAL_DEVICE}
+			$QEMU  ${QEMU_CONFIG}
 		fi
 		pid=$(get_pid_launched)	
 		
@@ -1239,6 +1256,19 @@ exec_stop() {
 				
 	echo "    Delete script qemu-ifup..."		
 	rm -f $(get_absolute_path ${SCRIPT_QEMU_UP})
+			
+	testHosts=$(ifconfig -a | grep "${QEMU_BRIDGE_NAME}")
+	if [ ! -z "${testHosts}" ]; then
+		sleep 1
+		
+		echo "    Delete virtual bridge ${QEMU_BRIDGE_NAME}..."	
+		ifconfig ${QEMU_BRIDGE_NAME} down
+		brctl delbr ${QEMU_BRIDGE_NAME}
+		
+		echo "    Set IP default on ${DEVICE_ETH0}..."
+		ifconfig ${QEMU_DEVICE_NAME} 0.0.0.0 -promisc down
+		ifconfig ${DEVICE_ETH0} ${IP_SERVER} -promisc up
+	fi
 		
 	testHosts=$(ifconfig -a | grep "${QEMU_DEVICE_NAME}")
 	if [ ! -z "${testHosts}" ]; then
