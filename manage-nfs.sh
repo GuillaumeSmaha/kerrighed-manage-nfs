@@ -211,7 +211,7 @@ service_all_restart() {
 
 # Init the file, dir
 exec_install_deps() {	
-	aptitude -y install debootstrap gcc g++ make docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-server nfs-kernel-server tftpd-hpa syslinux uml-utilities qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe
+	aptitude -y install debootstrap grub-pc openssh-client dhcp3-server nfs-kernel-server tftpd-hpa syslinux qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe
 	$ECHO "The package is installed !"
 }
 
@@ -298,7 +298,7 @@ subnet ${IP_BASE}.0 netmask 255.255.255.0
 	sleep 1
 
 	$ECHO
-	$ECHO "Configure the mountage..."
+	$ECHO "Configure the mounting table..."
 	echo "# /etc/exports: the access control list for filesystems which may be exported
 #		to NFS clients.  See exports(5).
 #
@@ -923,7 +923,7 @@ exec_init_krgmon() {
 		
 	echo "
 echo \"Install package...\"
-aptitude -y install subversion snmp snmpd libnet-snmp-perl
+aptitude -y install snmp snmpd libnet-snmp-perl
 
 
 sleep 1
