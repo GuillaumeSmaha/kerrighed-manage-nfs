@@ -248,6 +248,8 @@ exec_create_nfsroot() {
     $ECHO "Error : the repository is running an update !"
     $ECHO "Exit"
     exit
+  else
+    $ECHO "Repository is OK"
   fi
 	
 	$ECHO "Get an environnement 64 bit :"
