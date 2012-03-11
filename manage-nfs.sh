@@ -66,7 +66,7 @@ check_if_nfsroot_created() {
 	if [ ! -d "${fileTest}" ]; then
 		$ECHO
 		$ECHO "You need to create the nfs root."
-		$ECHO "	   $(get_absolute_path $0) init_nfsroot"
+		$ECHO "	   $(get_absolute_path $0) create_nfsroot"
 		$ECHO
 		exit 1
 	fi
