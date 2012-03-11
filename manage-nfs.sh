@@ -12,6 +12,7 @@ DIR_TFTPROOT_DEFAULT="tftpboot"
 IP_BASE_DEFAULT="192.168.10"
 IP_SERVER_DEFAULT="${IP_BASE_DEFAULT}.2"
 DEVICE_ETH0_DEFAULT="eth0"
+DEBIAN_URL="http://debian.med.univ-tours.fr/debian/"
 
 ECHO=echo
 QEMU=qemu-system-x86_64
@@ -233,6 +234,20 @@ exec_create_nfsroot() {
 	mkdir -p "${DIR_TFTPROOT}"
 		
 	sleep 1	
+
+  $ECHO "Check for debian repository : ${DEBIAN_URL}"
+  FILE_UPDATE=$(echo $DEBIAN_URL | cut -d'/' -f 3)
+  wget ${DEBIAN_URL}"Archive-Update-in-Progress-${FILE_UPDATE}" -O /tmp/checkupdatedebian 2> /tmp/checkupdatedebian.log
+  testError=$(grep "ERROR 404: Not Found" /tmp/checkupdatedebian.log)
+
+  rm -f /tmp/checkupdatedebian
+  rm -f /tmp/checkupdatedebian.log
+
+  if [ "$testError" == "" ]; then
+    $ECHO "Error : the repository is running an update !"
+    $ECHO "Exit"
+    exit
+  fi
 	
 	$ECHO "Get an environnement 64 bit :"
 	debootstrap --arch amd64 lenny "${DIR_NFSROOT}" http://debian.med.univ-tours.fr/debian/
