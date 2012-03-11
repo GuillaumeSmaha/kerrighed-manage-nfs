@@ -213,7 +213,7 @@ service_all_restart() {
 
 # Init the file, dir
 exec_install_deps() {	
-	aptitude -y install debootstrap grub-pc openssh-client dhcp3-server nfs-kernel-server tftpd-hpa syslinux qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe
+	aptitude -y install debootstrap grub-pc openssh-client dhcp3-server nfs-kernel-server tftpd-hpa syslinux qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe uml-utilities vncviewer
 	$ECHO "The package is installed !"
 }
 
@@ -258,12 +258,11 @@ exec_create_nfsroot() {
 	$ECHO
 }
 
-#Init the nfsroot
-exec_init_nfsroot() {
+#Configure the servers (tftp, dhcp and nfs)
+exec_configure_servers() {
 	check_if_configured
 	check_if_x86_64
 	check_if_nfsroot_created
-	
 	
 		
 	$ECHO
@@ -343,13 +342,16 @@ ${DIR_NFSROOT}/var *(rw,async,no_root_squash,no_subtree_check)
 	$ECHO "Copy the boot loader..."
 	cp /usr/lib/syslinux/pxelinux.0 "${DIR_TFTPROOT}"
 	
-	
-	
 	service_all_restart
 	
-	
-	
 	sleep 1
+}
+
+#Init the nfsroot
+exec_init_nfsroot() {
+	check_if_configured
+	check_if_x86_64
+	check_if_nfsroot_created
 	
 	$ECHO
 	$ECHO
@@ -1120,6 +1122,7 @@ exec_init_kerrighed() {
 	check_if_x86_64
 	
 	exec_install_deps
+  exec_configure_servers
 	exec_create_nfsroot
 	exec_init_nfsroot
 }
@@ -1358,6 +1361,9 @@ install_deps)
 service_all_restart)
 	service_all_restart
 	;;
+configure_servers)
+	exec_configure_servers
+	;;
 create_nfsroot)
 	exec_create_nfsroot
 	;;
@@ -1380,7 +1386,7 @@ start_krgmon)
     exec_start_krgmon
     ;;
 restart_krgmon)
-	exec_stop_krgmon
+    exec_stop_krgmon
     exec_start_krgmon
     ;;
 status)
@@ -1485,6 +1491,7 @@ config)
     $ECHO ""
     $ECHO " - Kerrighed Advanced (these steps are executed with 'init_kerrighed') :"
     $ECHO "    install_deps : Install the dependances"
+    $ECHO "    configure_servers : Overwrite the configurations files for the servers : TFTP, DHCP and NFS"
     $ECHO "    create_nfsroot : Create the nfsroot (Warning : This command erase the data !)"
     $ECHO "    init_nfsroot : Initialize and configure the nfsroot (install package, update repository, compile kernel)"
 esac
