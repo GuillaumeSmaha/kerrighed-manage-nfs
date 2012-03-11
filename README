@@ -1,4 +1,4 @@
-Kerrighed-Manage-NFS is a tool to install easily Kerrighed on a Debian or Ubuntu distribution.
+Kerrighed-Manage-NFS is a tool to install easily Kerrighed on a Debian, Mint or Ubuntu distribution.
 
 This script will install this package on your machine : 
 	debootstrap grub-pc openssh-client dhcp3-server
