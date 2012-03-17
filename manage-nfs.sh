@@ -168,13 +168,13 @@ service_nfs_stop() {
 }
 
 service_tftp_restart() {
-	/etc/init.d/tftpd-hpa restart
+  restart tftpd-hpa
 }
 service_tftp_start() {
-	/etc/init.d/tftpd-hpa start
+  start tftpd-hpa
 }
 service_tftp_stop() {
-	/etc/init.d/tftpd-hpa stop
+	stop tftpd-hpa
 }
 
 service_snmp_restart() {
@@ -202,6 +202,38 @@ service_all_restart() {
 	service_nfs_restart
 	$ECHO
 	service_tftp_restart
+}
+
+#Start all service
+service_all_start() {
+	check_if_configured
+	check_if_x86_64
+	check_if_nfsroot_created
+
+	
+	$ECHO
+	$ECHO "Start the daemon (DHCP, NFS, TFTP)..."
+	service_dhcp_start
+	$ECHO
+	service_nfs_start
+	$ECHO
+	service_tftp_start
+}
+
+#Stop all service
+service_all_stop() {
+	check_if_configured
+	check_if_x86_64
+	check_if_nfsroot_created
+
+	
+	$ECHO
+	$ECHO "Stop the daemon (DHCP, NFS, TFTP)..."
+	service_dhcp_stop
+	$ECHO
+	service_nfs_stop
+	$ECHO
+	service_tftp_stop
 }
 
 
@@ -341,74 +373,28 @@ ${DIR_NFSROOT}/var *(rw,async,no_root_squash,no_subtree_check)
 	$ECHO
 	$ECHO "Copy the boot loader..."
 	cp /usr/lib/syslinux/pxelinux.0 "${DIR_TFTPROOT}"
-	
-	service_all_restart
-	
-	sleep 1
+
+
+  if [ "$1" == "1" ]; then
+    exec_init_nfsroot_before
+    exec_init_nfsroot_after
+  else
+    service_all_restart
+  fi
 }
 
-#Init the nfsroot
-exec_init_nfsroot() {
+#Init the nfsroot_before
+exec_init_nfsroot_before() {
 	check_if_configured
 	check_if_x86_64
 	check_if_nfsroot_created
 	
 	$ECHO
 	$ECHO
-	$ECHO "A file init.sh is created in ${DIR_NFSROOT}/root/."
+	$ECHO "A file init_server_before.sh is created in ${DIR_NFSROOT}/root/."
 	
-	echo "#!/bin/bash
+ 	echo "#!/bin/bash
 	
-# Set the parameter for ccache
-exec_configure_ccache() {	
-	if [ -e \"/usr/local/bin/gcc\" ]; then
-		echo \"Ccache is already configured !\"
-	else
-		ln -s /usr/bin/ccache /usr/local/bin/c++
-		ln -s /usr/bin/ccache /usr/local/bin/c89-gcc
-		ln -s /usr/bin/ccache /usr/local/bin/c99-gcc
-		ln -s /usr/bin/ccache /usr/local/bin/cc
-		ln -s /usr/bin/ccache /usr/local/bin/cpp
-		ln -s /usr/bin/ccache /usr/local/bin/g++
-		ln -s /usr/bin/ccache /usr/local/bin/gcc 
-		
-		echo \"Ccache is configured !\"
-	fi
-}	
-		
-let \"nb_job=$(get_nb_cpu) + 1\"
-
-echo \"Set the language :\"
-export LANGUAGE=\"fr_FR.UTF-8\"
-export LC_ALL=\"fr_FR.UTF-8\"
-export LC_MESSAGES=\"fr_FR.UTF-8\"
-export LC_CTYPES=\"fr_FR.UTF-8\"
-export LANG=\"fr_FR.UTF-8\"
-aptitude -y install locales
-dpkg-reconfigure locales
-
-sleep 1
-
-echo
-echo \"Mount the device...\"
-mount -t proc none /proc
-
-sleep 1
-
-echo
-echo \"Install package...\"
-aptitude -y install make ccache gcc g++ docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-common nfs-common nfsbooted stress psmisc
-
-sleep 1
-
-
-$ECHO
-$ECHO \"Update and upgrade packages...\"
-aptitude update
-aptitude upgrade
-	
-sleep 1
-
 echo
 echo \"Define the hostname...\"
 echo \"127.0.0.1	localhost
@@ -668,6 +654,82 @@ ${IP_BASE}.252 krgnode252
 ${IP_BASE}.253 krgnode253
 ${IP_BASE}.254 krgnode254\" > /etc/hosts
 
+echo" > "${DIR_NFSROOT}/root/init_server_before.sh"
+
+	chmod u+x "${DIR_NFSROOT}/root/init_server_before.sh"
+
+	$ECHO
+	$ECHO "Entering in chroot '${DIR_NFSROOT}'"
+	chroot "${DIR_NFSROOT}" bash "/root/init_server_before.sh"
+}
+
+
+#Init the nfsroot
+exec_init_nfsroot() {
+	check_if_configured
+	check_if_x86_64
+	check_if_nfsroot_created
+
+	
+  exec_init_nfsroot_before
+
+  $ECHO
+	$ECHO
+	$ECHO "A file init.sh is created in ${DIR_NFSROOT}/root/."
+	
+	echo "#!/bin/bash
+	
+# Set the parameter for ccache
+exec_configure_ccache() {	
+	if [ -e \"/usr/local/bin/gcc\" ]; then
+		echo \"Ccache is already configured !\"
+	else
+		ln -s /usr/bin/ccache /usr/local/bin/c++
+		ln -s /usr/bin/ccache /usr/local/bin/c89-gcc
+		ln -s /usr/bin/ccache /usr/local/bin/c99-gcc
+		ln -s /usr/bin/ccache /usr/local/bin/cc
+		ln -s /usr/bin/ccache /usr/local/bin/cpp
+		ln -s /usr/bin/ccache /usr/local/bin/g++
+		ln -s /usr/bin/ccache /usr/local/bin/gcc 
+		
+		echo \"Ccache is configured !\"
+	fi
+}	
+		
+let \"nb_job=$(get_nb_cpu) + 1\"
+
+echo \"Set the language :\"
+export LANGUAGE=\"fr_FR.UTF-8\"
+export LC_ALL=\"fr_FR.UTF-8\"
+export LC_MESSAGES=\"fr_FR.UTF-8\"
+export LC_CTYPES=\"fr_FR.UTF-8\"
+export LANG=\"fr_FR.UTF-8\"
+aptitude -y install locales
+dpkg-reconfigure locales
+
+sleep 1
+
+echo
+echo \"Mount the device...\"
+mount -t proc none /proc
+
+sleep 1
+
+echo
+echo \"Install package...\"
+aptitude -y install make ccache gcc g++ docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-common nfs-common nfsbooted stress psmisc
+
+sleep 1
+
+
+$ECHO
+$ECHO \"Update and upgrade packages...\"
+aptitude update
+aptitude upgrade
+	
+sleep 1
+
+
 sleep 1
 
 echo
@@ -688,6 +750,113 @@ devpts		/dev/pts		devpts		defaults	0 0\" > /etc/fstab
 
 sleep 1
 
+echo
+exec_configure_ccache
+
+sleep 1
+
+echo
+echo \"Getting kerrighed tools :\"
+if [ -d \"/root/kerrighed/.git\" ]; then
+	echo \"Update from the repertory\"
+	cd /root/kerrighed ; git pull
+else
+	echo \"Clone the repertory\"
+	#git clone git://git-externe.kerlabs.com/kerrighed-tools.git /root/kerrighed
+	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/tools /root/kerrighed
+fi
+
+sleep 1
+
+echo
+echo \"Getting kerrighed kernel (take a long time !) :\"
+if [ -d \"/root/kerrighed/_kernel/.git\" ]; then
+	echo \"Update from the repertory\"
+	cd /root/kerrighed/_kernel ; git pull
+else
+	echo \"Clone the repertory\"
+	#git clone git://git-externe.kerlabs.com/kerrighed-kernel.git /root/kerrighed/_kernel
+	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/kernel /root/kerrighed/_kernel
+fi
+
+sleep 1
+
+echo
+echo \"Launch autogen.sh :\"
+cd /root/kerrighed/ ; ./autogen.sh
+
+sleep 1
+
+echo
+echo \"Configure kerrighed :\"
+cd /root/kerrighed/ ; ./configure --sysconfdir=/etc
+
+sleep 1
+
+echo
+echo \"Make menuconfig of the kerrighed kernel :\"
+cd /root/kerrighed/_kernel/ ; make menuconfig -j \$nb_job
+
+sleep 1
+
+echo
+echo \"Clean of the kerrighed kernel :\"
+cd /root/kerrighed/_kernel/ ; make mrproper -j \$nb_job
+rm -f /boot/*.old
+
+sleep 1
+
+echo
+echo \"Compile kerrighed kernel :\"
+cd /root/kerrighed/ ; make -j \$nb_job
+
+sleep 1
+
+echo
+echo \"Install kerrighed kernel :\"
+cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=/boot/ INSTALL_MOD_PATH=/root/ -j \$nb_job
+
+
+sleep 1
+
+
+echo
+echo \"Configure parameters for schedulers :\"
+mkdir -p /config
+
+sleep 1
+
+update-rc.d kerrighed-host defaults 60
+
+sleep 1
+
+echo
+echo \"Umount the device...\"
+umount /proc
+
+echo" > "${DIR_NFSROOT}/root/init.sh"
+
+	chmod u+x "${DIR_NFSROOT}/root/init.sh"
+
+	$ECHO
+	$ECHO "Entering in chroot '${DIR_NFSROOT}'"
+	chroot "${DIR_NFSROOT}" bash "/root/init.sh"
+
+  exec_init_nfsroot_after
+}
+
+#Init the nfsroot_after
+exec_init_nfsroot_after() {
+	check_if_configured
+	check_if_x86_64
+	check_if_nfsroot_created
+	
+	$ECHO
+	$ECHO
+	$ECHO "A file init_server_after.sh is created in ${DIR_NFSROOT}/root/."
+	
+ 	echo "#!/bin/bash
+	
 echo
 echo \"Configure initramfs...\"
 echo \"#
@@ -786,74 +955,6 @@ NFSROOT=${IP_SERVER}:/
 sleep 1
 
 echo
-exec_configure_ccache
-
-sleep 1
-
-echo
-echo \"Getting kerrighed tools :\"
-if [ -d \"/root/kerrighed/.git\" ]; then
-	echo \"Update from the repertory\"
-	cd /root/kerrighed ; git pull
-else
-	echo \"Clone the repertory\"
-	#git clone git://git-externe.kerlabs.com/kerrighed-tools.git /root/kerrighed
-	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/tools /root/kerrighed
-fi
-
-sleep 1
-
-echo
-echo \"Getting kerrighed kernel (take a long time !) :\"
-if [ -d \"/root/kerrighed/_kernel/.git\" ]; then
-	echo \"Update from the repertory\"
-	cd /root/kerrighed/_kernel ; git pull
-else
-	echo \"Clone the repertory\"
-	#git clone git://git-externe.kerlabs.com/kerrighed-kernel.git /root/kerrighed/_kernel
-	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/kernel /root/kerrighed/_kernel
-fi
-
-sleep 1
-
-echo
-echo \"Launch autogen.sh :\"
-cd /root/kerrighed/ ; ./autogen.sh
-
-sleep 1
-
-echo
-echo \"Configure kerrighed :\"
-cd /root/kerrighed/ ; ./configure --sysconfdir=/etc
-
-sleep 1
-
-echo
-echo \"Make menuconfig of the kerrighed kernel :\"
-cd /root/kerrighed/_kernel/ ; make menuconfig -j \$nb_job
-
-sleep 1
-
-echo
-echo \"Clean of the kerrighed kernel :\"
-cd /root/kerrighed/_kernel/ ; make mrproper -j \$nb_job
-rm -f /boot/*.old
-
-sleep 1
-
-echo
-echo \"Compile kerrighed kernel :\"
-cd /root/kerrighed/ ; make -j \$nb_job
-
-sleep 1
-
-echo
-echo \"Install kerrighed kernel :\"
-cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=/boot/ INSTALL_MOD_PATH=/root/ -j \$nb_job
-
-sleep 1
-
-echo
 echo \"Generate initrd for the kernels installed :\"
 listKernel=\$(ls /lib/modules/)
 for i in \$listKernel; do
@@ -861,35 +962,17 @@ for i in \$listKernel; do
 	echo \"    Kernel : \$i\"
 done
 
-sleep 1
+echo" > "${DIR_NFSROOT}/root/init_server_after.sh"
 
-
-echo
-echo \"Configure parameters for schedulers :\"
-mkdir -p /config
-
-sleep 1
-
-update-rc.d kerrighed-host defaults 60
-
-sleep 1
-
-echo
-echo \"Umount the device...\"
-umount /proc
-
-echo" > "${DIR_NFSROOT}/root/init.sh"
-
-	chmod u+x "${DIR_NFSROOT}/root/init.sh"
+	chmod u+x "${DIR_NFSROOT}/root/init_server_after.sh"
 
 	$ECHO
 	$ECHO "Entering in chroot '${DIR_NFSROOT}'"
-	chroot "${DIR_NFSROOT}" bash "/root/init.sh"
+	chroot "${DIR_NFSROOT}" bash "/root/init_server_after.sh"
 
 	$ECHO
 	$ECHO "Finishing the installation..."
 	exec_finish_init_nfsroot
-
 }
 
 # Finish the init of the nfsroot
@@ -918,7 +1001,7 @@ exec_finish_init_nfsroot() {
 		$ECHO "   Kernel '$i'..."
 		echo "LABEL kerrighed-$i
     kernel vmlinuz-$i
-    append initrd=initrd.img-$i root=/dev/nfs rw ip=dhcp nfsroot=${IP_SERVER}:${DIR_NFSROOT}/ session_id=1 autonodeid=1
+    append initrd=initrd.img-$i root=/dev/nfs rw ip=dhcp nfsroot=${IP_SERVER}:${DIR_NFSROOT}/ session_id=1 autonodeid=1 debug=1 loglevel=7
 " >> "${DIR_TFTPROOT}/pxelinux.cfg/default"
 	done
 	$ECHO "Finish"
@@ -1249,6 +1332,7 @@ exec_start() {
 		else
 			$QEMU  ${QEMU_CONFIG}
 		fi
+    echo "$QEMU $QEMU_CONFIG"
 		pid=$(get_pid_launched)	
 		
 		$ECHO "The virtual machine is started (pid:${pid}) !"
@@ -1361,8 +1445,14 @@ install_deps)
 service_all_restart)
 	service_all_restart
 	;;
+service_all_start)
+	service_all_start
+	;;
+service_all_stop)
+	service_all_stop
+	;;
 configure_servers)
-	exec_configure_servers
+	exec_configure_servers 1
 	;;
 create_nfsroot)
 	exec_create_nfsroot
@@ -1467,6 +1557,8 @@ config)
     $ECHO " - Global :"
     $ECHO "    status : Display the status"
     $ECHO "    service_all_restart : Restart all service"
+    $ECHO "    service_all_start : Start all service"
+    $ECHO "    service_all_stop : Stop all service"
     $ECHO ""
     $ECHO " - Kerrighed :"
     $ECHO "    init_kerrighed : Install the dependances and create the NFSROOT (not krgmon)"
