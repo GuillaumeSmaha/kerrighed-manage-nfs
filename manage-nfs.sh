@@ -13,7 +13,8 @@ IP_BASE_DEFAULT="192.168.10"
 IP_SERVER_DEFAULT="${IP_BASE_DEFAULT}.2"
 DEVICE_ETH0_DEFAULT="eth0"
 DEBIAN_URL="http://debian.med.univ-tours.fr/debian/"
-DEBIAN_URL="ftp://ftp.debian.org/debian/"
+#DEBIAN_URL="ftp://ftp.debian.org/debian/"
+DEBIAN_DIST="wheezy"
 
 ECHO=echo
 QEMU=qemu-system-x86_64
@@ -245,7 +246,7 @@ service_all_stop() {
 
 # Init the file, dir
 exec_install_deps() {	
-	aptitude -y install debootstrap grub-pc openssh-client dhcp3-server nfs-kernel-server tftpd-hpa syslinux qemu-system qemu-kvm-extras qemu-user qemu kvm-pxe uml-utilities vncviewer
+	aptitude -y install debootstrap grub-pc openssh-client dhcp3-server nfs-kernel-server tftpd-hpa syslinux qemu-system qemu-kvm qemu-kvm-extras qemu-user qemu kvm-pxe uml-utilities vncviewer
 	$ECHO "The package is installed !"
 }
 
@@ -271,7 +272,7 @@ exec_create_nfsroot() {
   $ECHO "Check for debian repository : ${DEBIAN_URL}"
   FILE_UPDATE=$(echo $DEBIAN_URL | cut -d'/' -f 3)
   wget ${DEBIAN_URL}"Archive-Update-in-Progress-${FILE_UPDATE}" -O /tmp/checkupdatedebian 2> /tmp/checkupdatedebian.log
-  testError=$(grep -E "(ERROR 404: Not Found)|(No such file)" /tmp/checkupdatedebian.log)
+  testError=$(grep -iE "(ERROR 404|Not Found)|(No such file)" /tmp/checkupdatedebian.log)
 
   rm -f /tmp/checkupdatedebian
   rm -f /tmp/checkupdatedebian.log
@@ -285,7 +286,7 @@ exec_create_nfsroot() {
   fi
 	
 	$ECHO "Get an environnement 64 bit :"
-	debootstrap --arch amd64 lenny "${DIR_NFSROOT}" ${DEBIAN_URL}
+	debootstrap --arch amd64 ${DEBIAN_DIST} "${DIR_NFSROOT}" ${DEBIAN_URL}
 	$ECHO "Getting finish !"
 	$ECHO
 }
