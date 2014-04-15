@@ -1205,8 +1205,8 @@ exec_init_kerrighed() {
 	check_if_x86_64
 	
 	exec_install_deps
-  exec_configure_servers
 	exec_create_nfsroot
+    exec_configure_servers
 	exec_init_nfsroot
 }
 
