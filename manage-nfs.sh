@@ -15,6 +15,7 @@ DEVICE_ETH0_DEFAULT="eth0"
 DEBIAN_URL="http://debian.med.univ-tours.fr/debian/"
 #DEBIAN_URL="ftp://ftp.debian.org/debian/"
 DEBIAN_DIST="wheezy"
+LANGUAGE="en_US.UTF-8"
 
 ECHO=echo
 QEMU=qemu-system-x86_64
@@ -700,11 +701,11 @@ exec_configure_ccache() {
 let \"nb_job=$(get_nb_cpu) + 1\"
 
 echo \"Set the language :\"
-export LANGUAGE=\"fr_FR.UTF-8\"
-export LC_ALL=\"fr_FR.UTF-8\"
-export LC_MESSAGES=\"fr_FR.UTF-8\"
-export LC_CTYPES=\"fr_FR.UTF-8\"
-export LANG=\"fr_FR.UTF-8\"
+export LANGUAGE=\"${LANGUAGE}\"
+export LC_ALL=\"${LANGUAGE}\"
+export LC_MESSAGES=\"${LANGUAGE}\"
+export LC_CTYPES=\"${LANGUAGE}\"
+export LANG=\"${LANGUAGE}\"
 aptitude -y install locales
 dpkg-reconfigure locales
 
