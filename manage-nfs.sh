@@ -262,6 +262,10 @@ exec_create_nfsroot() {
 	#rm -fr "${DIR_TFTPROOT}"
 	
 	sleep 1
+
+    if [ -d "${DIR_NFSROOT}" ] && [ -d "${DIR_TFTPROOT}" ]; then
+        return;
+    fi
 	
 	echo mkdir -p "${DIR_NFSROOT}"
 	echo mkdir -p "${DIR_TFTPROOT}"
@@ -830,6 +834,13 @@ echo
 echo \"Install kerrighed kernel :\"
 cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=/boot/ INSTALL_MOD_PATH=/root/ -j \$nb_job
 
+
+sleep 1
+
+
+echo
+echo \"Update initramfs :\"
+update-initramfs -v -k all -u
 
 sleep 1
 
