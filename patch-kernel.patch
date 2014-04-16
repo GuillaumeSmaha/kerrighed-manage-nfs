@@ -1,0 +1,305 @@
+From 706c66200b37bd38c8531f0604d97bf119f26e50 Mon Sep 17 00:00:00 2001
+From: root <root@bender-pc.dartybox.com>
+Date: Wed, 16 Apr 2014 23:55:15 +0200
+Subject: [PATCH] Fix for wheezy and gcc4.7
+
+---
+ arch/x86/include/asm/percpu.h             | 1 +
+ arch/x86/vdso/Makefile                    | 2 +-
+ include/linux/pagemap.h                   | 1 +
+ kddm/kddm_hotplug.c                       | 5 +++--
+ kddm/protocol_action.c                    | 3 +--
+ kerrighed/capability/capability.c         | 1 -
+ kerrighed/epm/ghost.c                     | 6 +++---
+ kerrighed/epm/sighand.c                   | 3 +--
+ kerrighed/epm/signal.c                    | 3 +--
+ kerrighed/fs/file.c                       | 2 --
+ kerrighed/fs/regular_file_mgr.c           | 2 --
+ kerrighed/mm/memory_io_linker.c           | 1 +
+ kerrighed/mm/mobility.c                   | 1 +
+ kerrighed/procfs/proc.c                   | 2 +-
+ kerrighed/scheduler/policies/rbt_policy.c | 5 +++--
+ kerrighed/scheduler/probes/mosix_probe.c  | 1 +
+ net/krgrpc/rpc.c                          | 1 +
+ net/krgrpc/thread_pool.c                  | 1 +
+ 18 files changed, 21 insertions(+), 20 deletions(-)
+
+diff --git a/arch/x86/include/asm/percpu.h b/arch/x86/include/asm/percpu.h
+index 02ecb30..7170f3e 100644
+--- a/arch/x86/include/asm/percpu.h
++++ b/arch/x86/include/asm/percpu.h
+@@ -77,6 +77,7 @@ do {							\
+ 	if (0) {					\
+ 		T__ tmp__;				\
+ 		tmp__ = (val);				\
++		(void)tmp__;				\
+ 	}						\
+ 	switch (sizeof(var)) {				\
+ 	case 1:						\
+diff --git a/arch/x86/vdso/Makefile b/arch/x86/vdso/Makefile
+index 16a9020..dcba3e4 100644
+--- a/arch/x86/vdso/Makefile
++++ b/arch/x86/vdso/Makefile
+@@ -25,7 +25,7 @@ targets += vdso.so vdso.so.dbg vdso.lds $(vobjs-y)
+ 
+ export CPPFLAGS_vdso.lds += -P -C
+ 
+-VDSO_LDFLAGS_vdso.lds = -m elf_x86_64 -Wl,-soname=linux-vdso.so.1 \
++VDSO_LDFLAGS_vdso.lds = -Wl,-soname=linux-vdso.so.1 \
+ 		      	-Wl,-z,max-page-size=4096 -Wl,-z,common-page-size=4096
+ 
+ $(obj)/vdso.o: $(src)/vdso.S $(obj)/vdso.so
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 34da523..6e3a81e 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -435,6 +435,7 @@ static inline int fault_in_pages_readable(const char __user *uaddr, int size)
+ 		if (((unsigned long)uaddr & PAGE_MASK) !=
+ 				((unsigned long)end & PAGE_MASK))
+ 		 	ret = __get_user(c, end);
++			(void)c;
+ 	}
+ 	return ret;
+ }
+diff --git a/kddm/kddm_hotplug.c b/kddm/kddm_hotplug.c
+index 206b209..7b84e2b 100644
+--- a/kddm/kddm_hotplug.c
++++ b/kddm/kddm_hotplug.c
+@@ -411,9 +411,10 @@ static int remove_browse_objects_on_remaining_nodes(objid_t objid,
+ {
+ 	struct browse_data *param = _data;
+ 	struct kddm_set *set = param->set;
+-	kerrighed_node_t old_def_owner, new_def_owner;
++	//kerrighed_node_t old_def_owner;
++	kerrighed_node_t new_def_owner;
+ 
+-	old_def_owner = kddm_io_default_owner (set, objid);
++	//old_def_owner = kddm_io_default_owner (set, objid);
+ 	new_def_owner = __kddm_io_default_owner(set, objid,
+ 						&param->new_nodes_map,
+ 						param->new_nb_nodes);
+diff --git a/kddm/protocol_action.c b/kddm/protocol_action.c
+index 4b90529..9038051 100644
+--- a/kddm/protocol_action.c
++++ b/kddm/protocol_action.c
+@@ -410,11 +410,10 @@ void send_no_object(struct kddm_set * set,
+ 		    kerrighed_node_t dest_node,
+ 		    int send_ownership)
+ {
+-	int r = 0;
+ 	BUG_ON(dest_node < 0 || dest_node > KERRIGHED_MAX_NODES);
+ 
+ 	if (send_ownership) {
+-		r = change_prob_owner (obj_entry, dest_node);
++		change_prob_owner (obj_entry, dest_node);
+ 		kddm_change_obj_state(set, obj_entry, objid, INV_COPY);
+ 	}
+ 
+diff --git a/kerrighed/capability/capability.c b/kerrighed/capability/capability.c
+index 0cc1ba5..ec2e794 100644
+--- a/kerrighed/capability/capability.c
++++ b/kerrighed/capability/capability.c
+@@ -185,7 +185,6 @@ static int krg_set_father_cap(struct task_struct *tsk,
+ 	} else {
+ 		struct children_kddm_object *parent_children_obj;
+ 		pid_t parent_pid, real_parent_pid;
+-		int retval;
+ 
+ 		read_unlock(&tasklist_lock);
+ 
+diff --git a/kerrighed/epm/ghost.c b/kerrighed/epm/ghost.c
+index 69a6d2c..c8cd30e 100644
+--- a/kerrighed/epm/ghost.c
++++ b/kerrighed/epm/ghost.c
+@@ -1798,7 +1798,7 @@ struct task_struct *create_new_process_from_ghost(struct task_struct *tskRecv,
+ 	unsigned long flags;
+ 	unsigned long stack_start;
+ 	unsigned long stack_size;
+-	int *parent_tidptr;
++//	int *parent_tidptr;
+ 	int *child_tidptr;
+ 	struct children_kddm_object *parent_children_obj;
+ 	pid_t real_parent_tgid;
+@@ -1854,7 +1854,7 @@ struct task_struct *create_new_process_from_ghost(struct task_struct *tskRecv,
+ 	 * x86_64)
+ 	 */
+ 	stack_size = 0;
+-	parent_tidptr = NULL;
++//	parent_tidptr = NULL;
+ 	child_tidptr = NULL;
+ 
+ 	if (action->type == EPM_REMOTE_CLONE) {
+@@ -1868,7 +1868,7 @@ struct task_struct *create_new_process_from_ghost(struct task_struct *tskRecv,
+ 		flags = flags | action->remote_clone.clone_flags;
+ 		stack_start = action->remote_clone.stack_start;
+ 		stack_size = action->remote_clone.stack_size;
+-		parent_tidptr = action->remote_clone.parent_tidptr;
++//		parent_tidptr = action->remote_clone.parent_tidptr;
+ 		child_tidptr = action->remote_clone.child_tidptr;
+ 	}
+ 
+diff --git a/kerrighed/epm/sighand.c b/kerrighed/epm/sighand.c
+index 7ea4f79..a8e9305 100644
+--- a/kerrighed/epm/sighand.c
++++ b/kerrighed/epm/sighand.c
+@@ -360,9 +360,8 @@ void cr_sighand_free(objid_t id)
+ void krg_sighand_share(struct task_struct *task)
+ {
+ 	struct sighand_struct_kddm_object *obj = task->sighand->kddm_obj;
+-	int count;
+ 
+-	count = atomic_inc_return(&obj->count);
++	atomic_inc_return(&obj->count);
+ }
+ 
+ objid_t krg_sighand_exit(struct sighand_struct *sig)
+diff --git a/kerrighed/epm/signal.c b/kerrighed/epm/signal.c
+index cd75f24..4dc63dd 100644
+--- a/kerrighed/epm/signal.c
++++ b/kerrighed/epm/signal.c
+@@ -522,9 +522,8 @@ void krg_signal_unlock(struct signal_struct *sig)
+ void krg_signal_share(struct signal_struct *sig)
+ {
+ 	struct signal_struct_kddm_object *obj = sig->kddm_obj;
+-	int count;
+ 
+-	count = atomic_inc_return(&obj->count);
++	atomic_inc_return(&obj->count);
+ }
+ 
+ struct signal_struct *krg_signal_exit(struct signal_struct *sig)
+diff --git a/kerrighed/fs/file.c b/kerrighed/fs/file.c
+index 09daa73..e2ceb03 100644
+--- a/kerrighed/fs/file.c
++++ b/kerrighed/fs/file.c
+@@ -154,10 +154,8 @@ done:
+ void get_dvfs_file(int index, unsigned long objid)
+ {
+ 	struct dvfs_file_struct *dvfs_file;
+-	struct file *file;
+ 
+ 	dvfs_file = grab_dvfs_file_struct(objid);
+-	file = dvfs_file->file;
+ 
+ 	dvfs_file->count++;
+ 
+diff --git a/kerrighed/fs/regular_file_mgr.c b/kerrighed/fs/regular_file_mgr.c
+index feee962..fdfaead 100644
+--- a/kerrighed/fs/regular_file_mgr.c
++++ b/kerrighed/fs/regular_file_mgr.c
+@@ -933,7 +933,6 @@ static int cr_import_complete_file(struct task_struct *fake, void *_file_link)
+ 
+ static int cr_delete_file(struct task_struct *fake, void *_file_link)
+ {
+-	int r = 0;
+ 	struct cr_file_link *file_link = _file_link;
+ 	struct file *file;
+ 
+@@ -952,7 +951,6 @@ static int cr_delete_file(struct task_struct *fake, void *_file_link)
+ 
+ 		dvfs_file = grab_dvfs_file_struct(file_link->dvfs_objid);
+ 		if (!dvfs_file) {
+-			r = -ENOENT;
+ 			goto error;
+ 		}
+ 
+diff --git a/kerrighed/mm/memory_io_linker.c b/kerrighed/mm/memory_io_linker.c
+index e7b1bde..dcb4ed1 100644
+--- a/kerrighed/mm/memory_io_linker.c
++++ b/kerrighed/mm/memory_io_linker.c
+@@ -138,6 +138,7 @@ int memory_insert_page (struct kddm_obj * obj_entry,
+ 	struct page *page;
+ 
+ 	page = obj_entry->object;
++	(void)page;
+ 
+ 	return 0;
+ }
+diff --git a/kerrighed/mm/mobility.c b/kerrighed/mm/mobility.c
+index 80e2b98..6da4e28 100644
+--- a/kerrighed/mm/mobility.c
++++ b/kerrighed/mm/mobility.c
+@@ -1444,6 +1444,7 @@ int import_mm_struct (struct epm_action *action,
+ 		goto err;
+ 
+ 	set = mm->anon_vma_kddm_set;
++	(void)set;
+ 
+ 	krg_put_mm (mm->mm_id);
+ 
+diff --git a/kerrighed/procfs/proc.c b/kerrighed/procfs/proc.c
+index 46a9db1..dc7fce4 100644
+--- a/kerrighed/procfs/proc.c
++++ b/kerrighed/procfs/proc.c
+@@ -181,7 +181,7 @@ static void init_cpu_info_seq_struct(struct cpu_info_seq_struct *seq_data)
+ static void go_to_selected_cpu(struct cpu_info_seq_struct *seq_data,
+ 			       loff_t pos)
+ {
+-	krg_static_node_info_t *static_node_info;
++	krg_static_node_info_t *static_node_info = NULL;
+ 	int i;
+ 
+ 	if (seq_data->cur_node == KERRIGHED_MAX_NODES)
+diff --git a/kerrighed/scheduler/policies/rbt_policy.c b/kerrighed/scheduler/policies/rbt_policy.c
+index 7793ee2..2c1c7cc 100644
+--- a/kerrighed/scheduler/policies/rbt_policy.c
++++ b/kerrighed/scheduler/policies/rbt_policy.c
+@@ -176,6 +176,7 @@ unsigned int *rbt_calc_ideal_load(const krgnodemask_t online_selected_nodes, int
+ 	unsigned int how_many, mattload_value;
+ 
+ 	nr_online_nodes = krgnodes_weight(online_selected_nodes);
++	(void)nr_online_nodes;
+ 
+ 	load_increments = kzalloc(sizeof(unsigned int) * KERRIGHED_MAX_NODES, GFP_ATOMIC);
+ 	if (!load_increments) {
+@@ -330,9 +331,9 @@ out:
+ struct task_struct * rbt_find_a_task(struct scheduler_policy *policy_ptr)
+ {
+ 	int err;
+-	struct task_struct *p, *max_p;
++	struct task_struct *p, *max_p = NULL;
+ 	pid_t process;
+-	unsigned long total_vm, lowest_vm;
++	unsigned long total_vm, lowest_vm = 0;
+ 	unsigned int jiffies;
+ 	struct rbt_policy *pol = container_of(policy_ptr, struct rbt_policy, policy);
+ 	struct scheduler *scheduler = scheduler_policy_get_scheduler(policy_ptr);
+diff --git a/kerrighed/scheduler/probes/mosix_probe.c b/kerrighed/scheduler/probes/mosix_probe.c
+index 4330995..968a9c5 100644
+--- a/kerrighed/scheduler/probes/mosix_probe.c
++++ b/kerrighed/scheduler/probes/mosix_probe.c
+@@ -360,6 +360,7 @@ static int kmcb_accumulate_load(struct notifier_block *notifier, unsigned long t
+ 		mp_calc_load();
+ 
+ 		load = mosix_data.mosix_mean_load;
++		(void)load;
+ 
+ 		scheduler_probe_source_notify_update(
+ 			mosix_probe_sources[VALUE_MEAN_LOAD]);
+diff --git a/net/krgrpc/rpc.c b/net/krgrpc/rpc.c
+index 4029134..a279cb5 100644
+--- a/net/krgrpc/rpc.c
++++ b/net/krgrpc/rpc.c
+@@ -409,6 +409,7 @@ void rpc_communicator_release(struct kref *kref)
+ 
+ 	BUG();
+ 	communicator = container_of(kref, struct rpc_communicator, kref);
++	(void)communicator;
+ }
+ 
+ struct rpc_communicator *rpc_find_get_communicator(int id)
+diff --git a/net/krgrpc/thread_pool.c b/net/krgrpc/thread_pool.c
+index f924946..0b655ed 100644
+--- a/net/krgrpc/thread_pool.c
++++ b/net/krgrpc/thread_pool.c
+@@ -150,6 +150,7 @@ void do_krgrpc_handler(struct rpc_desc* desc,
+ 			
+  continue_in_synchro:
+ 	client = desc->client;
++	(void)client;
+ 	BUG_ON(!desc->desc_recv[0]);
+ 
+ 	if (test_bit(desc->rpcid, desc->comm->rpc_mask)) {
+-- 
+1.8.3.2
+

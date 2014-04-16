@@ -13,7 +13,7 @@ IP_BASE_DEFAULT="192.168.10"
 IP_SERVER_DEFAULT="${IP_BASE_DEFAULT}.2"
 DEVICE_ETH0_DEFAULT="eth0"
 DEBIAN_URL="http://debian.med.univ-tours.fr/debian/"
-#DEBIAN_URL="ftp://ftp.debian.org/debian/"
+DEBIAN_URL="ftp://ftp.debian.org/debian/"
 DEBIAN_DIST="wheezy"
 LANGUAGE="en_US.UTF-8"
 
@@ -258,7 +258,7 @@ exec_create_nfsroot() {
 	check_if_x86_64
 	
 	
-	rm -fr "${DIR_NFSROOT}"
+	#rm -fr "${DIR_NFSROOT}"
 	#rm -fr "${DIR_TFTPROOT}"
 	
 	sleep 1
@@ -766,6 +766,12 @@ else
 	echo \"Clone the repertory\"
 	#git clone git://git-externe.kerlabs.com/kerrighed-tools.git /root/kerrighed
 	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/tools /root/kerrighed
+
+	echo \"Apply patch for tools\"
+	cd /root/kerrighed
+	git apply --stat /root/patch-tools.patch
+	git apply /root/patch-tools.patch
+	cd -
 fi
 
 sleep 1
@@ -779,6 +785,12 @@ else
 	echo \"Clone the repertory\"
 	#git clone git://git-externe.kerlabs.com/kerrighed-kernel.git /root/kerrighed/_kernel
 	git clone git://kerrighed.git.sourceforge.net/gitroot/kerrighed/kernel /root/kerrighed/_kernel
+
+        echo \"Apply patch for kernel\"
+        cd /root/kerrighed/_kernel
+        git apply --stat /root/patch-kernel.patch
+        git apply /root/patch-kernel.patch
+        cd -
 fi
 
 sleep 1
@@ -839,6 +851,11 @@ umount /proc
 echo" > "${DIR_NFSROOT}/root/init.sh"
 
 	chmod u+x "${DIR_NFSROOT}/root/init.sh"
+
+	$ECHO
+	$ECHO "Copy patches"
+	cp "./patch-tools.patch" "${DIR_NFSROOT}/root/"
+	cp "./patch-kernel.patch" "${DIR_NFSROOT}/root/"
 
 	$ECHO
 	$ECHO "Entering in chroot '${DIR_NFSROOT}'"

@@ -1,0 +1,27 @@
+From abc42aa4a7268e305fd5a21c666e2a3cc0e9129f Mon Sep 17 00:00:00 2001
+From: root <root@bender-pc.dartybox.com>
+Date: Wed, 16 Apr 2014 23:51:33 +0200
+Subject: [PATCH] Fix for wheezy and gcc4.7
+
+---
+ tools-host/krgboot.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/tools-host/krgboot.c b/tools-host/krgboot.c
+index ab8152a..13cd977 100644
+--- a/tools-host/krgboot.c
++++ b/tools-host/krgboot.c
+@@ -83,9 +83,8 @@ int get_config(int argc, char *argv[])
+ int do_exec_helper(void *arg)
+ {
+ 	char **argv = arg;
+-	int ret;
+ 
+-	ret = execvp(argv[0], argv);
++	execvp(argv[0], argv);
+ 	fprintf(stderr, "execvp(%s, ...) failed! %s\n",
+ 		argv[0], strerror(errno));
+ 	exit(1);
+-- 
+1.8.3.2
+
