@@ -406,7 +406,7 @@ echo \"Delete root password\"
 passwd -d root
 if [ ! -d "/home/user" ]; then
     adduser --disabled-password --gecos \"\" user
-    usermod --password user user
+    usermod --password $(openssl passwd user) user
 fi
 
 echo
