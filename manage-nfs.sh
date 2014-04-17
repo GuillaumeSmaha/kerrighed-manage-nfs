@@ -404,6 +404,10 @@ exec_init_nfsroot_before() {
 echo
 echo \"Delete root password\"
 passwd -d root
+if [ ! -d "/home/user" ]; then
+    adduser --disabled-password --gecos \"\" user
+    usermod --password user user
+fi
 
 echo
 echo \"Define the hostname...\"
