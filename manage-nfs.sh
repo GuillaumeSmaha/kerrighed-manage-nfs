@@ -409,9 +409,9 @@ if [ ! -d "/home/user" ]; then
     usermod --password $(openssl passwd user) user
 fi
 
-echo
-echo \"Change ssh permission : enable empty password\"
-sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/g' /etc/ssh/sshd_config
+#echo
+#echo \"Change ssh permission : enable empty password\"
+#sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/g' /etc/ssh/sshd_config
 
 
 echo
