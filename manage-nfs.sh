@@ -413,6 +413,29 @@ echo
 echo \"Change ssh permission : enable empty password\"
 sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/g' /etc/ssh/sshd_config
 
+
+echo
+echo \"Change sudo permission\"
+echo "# /etc/sudoers
+#
+# This file MUST be edited with the 'visudo' command as root.
+#
+# See the man page for details on how to write a sudoers file.
+#
+
+Defaults        env_reset
+
+# Host alias specification
+
+# User alias specification
+
+# Cmnd alias specification
+
+# User privilege specification
+root    ALL=(ALL) ALL
+user    ALL=(ALL) ALL" > /etc/sudoers
+
+
 echo
 echo \"Define the hostname...\"
 echo \"127.0.0.1	localhost
@@ -857,6 +880,15 @@ cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=boot INSTALL_MOD_PATH=
 
 
 sleep 1
+
+echo
+echo \"Install kerrighed tools :\"
+cd /root/kerrighed/tools/ ; make install
+
+
+sleep 1
+
+
 
 
 echo
