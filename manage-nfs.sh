@@ -904,7 +904,7 @@ mkdir -p /config
 
 sleep 1
 
-update-rc.d kerrighed-host defaults 60
+update-rc.d kerrighed defaults 60
 
 sleep 1
 
