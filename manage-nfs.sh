@@ -410,6 +410,10 @@ if [ ! -d "/home/user" ]; then
 fi
 
 echo
+echo \"Change ssh permission : enable empty password\"
+sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/g' /etc/ssh/sshd_config
+
+echo
 echo \"Define the hostname...\"
 echo \"127.0.0.1	localhost
 ${IP_SERVER}	srv-krg-nfs
