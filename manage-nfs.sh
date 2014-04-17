@@ -402,6 +402,10 @@ exec_init_nfsroot_before() {
  	echo "#!/bin/bash
 	
 echo
+echo \"Delete root password\"
+passwd -d root
+
+echo
 echo \"Define the hostname...\"
 echo \"127.0.0.1	localhost
 ${IP_SERVER}	srv-krg-nfs
