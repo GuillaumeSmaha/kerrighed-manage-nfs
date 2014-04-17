@@ -416,7 +416,7 @@ sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/g' /etc/ssh/sshd_conf
 
 echo
 echo \"Change sudo permission\"
-echo "# /etc/sudoers
+echo \"# /etc/sudoers
 #
 # This file MUST be edited with the 'visudo' command as root.
 #
@@ -433,7 +433,7 @@ Defaults        env_reset
 
 # User privilege specification
 root    ALL=(ALL) ALL
-user    ALL=(ALL) ALL" > /etc/sudoers
+user    ALL=(ALL) ALL\" > /etc/sudoers
 
 
 echo
