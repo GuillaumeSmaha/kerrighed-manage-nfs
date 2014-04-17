@@ -830,9 +830,18 @@ cd /root/kerrighed/ ; make -j \$nb_job
 
 sleep 1
 
+
+echo \"Create module dir :\"
+DIRMOD=$(cat /root/kerrighed/kernel/include/config/kernel.release)
+mkdir -p $DIRMOD
+echo \"    $DIRMOD\"
+
+
+sleep 1
+
 echo
 echo \"Install kerrighed kernel :\"
-cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=/boot/ INSTALL_MOD_PATH=/root/ -j \$nb_job
+cd /root/kerrighed/ ; make install DESTDIR=/ INSTALL_PATH=boot INSTALL_MOD_PATH=root -j \$nb_job
 
 
 sleep 1
