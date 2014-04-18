@@ -758,7 +758,7 @@ sleep 1
 
 echo
 echo \"Install package...\"
-aptitude -y install make ccache gcc g++ docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-common nfs-common nfsbooted stress psmisc sudo
+aptitude -y install make ccache gcc g++ docbook-xsl xsltproc automake libtool git git-core git-arch git-completion bzip2 python initramfs-tools ncurses-dev grub-pc openssh-server dhcp3-common nfs-common nfsbooted stress psmisc sudo lsb-release patchutils xutils-dev ntp pkg-config lxc lxc-dbg lxc-dev lxctl
 
 sleep 1
 
